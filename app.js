@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 
 dotenv.config();
 const dbURL = process.env.DATABASE_URL
@@ -13,6 +14,7 @@ app.use(express.json())
 mongoose.Promise = global.Promise;
 mongoose.connect(dbURL);
 var ObjectId = mongoose.Schema.ObjectId;
+const salt = 5;
 // var number = mongoose.Schema.number;
 // var Date = mongoose.Schema.Date;
 // var String = mongoose.Schema.String;
@@ -67,6 +69,7 @@ app.post('/api/user', async (req, res) => {
     try {
         var dat = await User.create(req.body);
         try {
+            dat["password"] = await bcrypt.hash(dat["password"], salt)
             dat.save()
         } catch (err) {
             res.status(500).send("Status: 500 Error adding data to database")
@@ -125,8 +128,8 @@ app.get('/api/admin/users', async (req, res) => {
     // return all users in database (without passwords)
     // request should be formatted as {pageSize: int, lastId: id}
     try {
-        let nPages = req.body["pageSize"];
-        let lastId = req.body["lastId"];
+        let nPages = req.params["pageSize"];
+        let lastId = req.params["lastId"];
         let response; 
         if (lastId == null) {
             response = await User.find().limit(nPages).select(["-password"]);
@@ -182,6 +185,40 @@ app.get('/api/admin/training', async (req, res) => {
     } catch (err) {
         res.status(500).send("Status 500 Error")
     }
+})
+
+// level 3
+app.post("/api/user/login", async (req, res) => {
+
+    // request formatted as {"email": email, "password", password}
+    // password encrypted with bcrypt thingy
+    let email = req.body["email"]
+    let password = req.body["password"]
+    console.log(email, password);
+
+    try {
+        // hash password using salt from original hash stored with data to see if it matches
+        // assuming that there is exactly 1 login/user per email with no repeat loggings
+        let emailUser = await User.find({"email": email})[0];
+        console.log(emailUser) 
+        bcrypt.compare(password, emailUser["password"]).then(r => {
+            if (r) {
+                res.status(200).send("Status 200")
+            } else {
+                res.status(403).send("Status 403 Invalid email password combo")
+            }
+        })
+
+    } catch (err) {
+        res.status(403).send("Status 403 Invalid email password combo")
+    }
+
+})
+
+app.post("/api/user/verify", async (req, res) => {
+
+    // json web token
+
 })
 
 app.listen(APP_PORT, () => {
