@@ -100,6 +100,13 @@ app.post('/api/training', async (req, res) => {
     // console.log(req.body);
     try {
         var dat = await TrainingLog.create(req.body);
+        // level 2
+        let animalId = dat["animal"];
+        let ownerId = dat["user"];
+        if (Animal.find({"_id": animalId})["owner"] != ownerId) {
+            res.status(400).sent("Status 400 Animal and Owner mismatch")
+        }
+        // end L2
         try {
             dat.save()
         } catch (err) {
@@ -114,7 +121,68 @@ app.post('/api/training', async (req, res) => {
 })
 
 // level 2
+app.get('/api/admin/users', async (req, res) => {
+    // return all users in database (without passwords)
+    // request should be formatted as {pageSize: int, lastId: id}
+    try {
+        let nPages = req.body["pageSize"];
+        let lastId = req.body["lastId"];
+        let response; 
+        if (lastId == null) {
+            response = await User.find().limit(nPages).select(["-password"]);
+        } else {
+            response = await User.find({"_id": lastId}).limit(nPages).select(["-password"]);
+        }
 
+        let nLastId = response[response.length - 1]["_id"];
+        res.status(200).send({"pages": response, "lastId": nLastId});
+
+    } catch (err) {
+        res.status(500).send("Status 500 Error")
+    }
+})
+
+app.get('/api/admin/animals', async (req, res) => {
+    // return all users in database (without passwords)
+    // request should be formatted as {pageSize: int, lastId: id}
+    try {
+        let nPages = req.body["pageSize"];
+        let lastId = req.body["lastId"];
+        let response; 
+        if (lastId == null) {
+            response = await Animal.find().limit(nPages);
+        } else {
+            response = await Animal.find({"_id": lastId}).limit(nPages);
+        }
+
+        let nLastId = response[response.length - 1]["_id"];
+        res.status(200).send({"pages": response, "lastId": nLastId});
+
+    } catch (err) {
+        res.status(500).send("Status 500 Error")
+    }
+})
+
+app.get('/api/admin/training', async (req, res) => {
+    // return all users in database (without passwords)
+    // request should be formatted as {pageSize: int, lastId: id}
+    try {
+        let nPages = req.body["pageSize"];
+        let lastId = req.body["lastId"];
+        let response; 
+        if (lastId == null) {
+            response = await TrainingLog.find().limit(nPages);
+        } else {
+            response = await TrainingLog.find({"_id": lastId}).limit(nPages);
+        }
+
+        let nLastId = response[response.length - 1]["_id"];
+        res.status(200).send({"pages": response, "lastId": nLastId});
+
+    } catch (err) {
+        res.status(500).send("Status 500 Error")
+    }
+})
 
 app.listen(APP_PORT, () => {
     console.log(`api listening at http://localhost:${APP_PORT}`)
